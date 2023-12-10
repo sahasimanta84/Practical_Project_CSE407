@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Data and Charts</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.8.0/chart.min.js"></script>
+</head>
+<body>
+    <h1>Real-time Data</h1>
+    <p>Timestamp: <span id="timestamp"></span></p>
+    <p>Current: <span id="current">0 mA</span></p>
+    <p>Voltage: <span id="voltage">0 V</span></p>
+    <p>Power: <span id="power">0 W</span></p>
+    <p>kWh per Minute: <span id="kwh_per_minute">0</span></p>
+    <p>Cost per Minute: <span id="cost_per_minute">0</span></p>
+
+    <h2>Charts</h2>
+    <canvas id="currentChart" width="2500" height="384"></canvas>
+    <canvas id="voltageChart" width="2500" height="384"></canvas>
+    <canvas id="powerChart" width="2500" height="384"></canvas>
+    <canvas id="kwhChart" width="2500" height="384"></canvas>
+    <canvas id="costChart" width="2500" height="384"></canvas>
+
+    <script>
+        // Define variables to hold chart instances
+        var currentChart, voltageChart, powerChart, kwhChart, costChart;
+
+        // Function to initialize charts
+        function initializeCharts() {
+            currentChart = createChart('currentChart', 'Current (mA)', 'blue');
+            voltageChart = createChart('voltageChart', 'Voltage (V)', 'red');
+            powerChart = createChart('powerChart', 'Power (W)', 'green');
+            kwhChart = createChart('kwhChart', 'kWh per Minute', 'orange');
+            costChart = createChart('costChart', 'Cost per Minute', 'purple');
+        }
+
+        // Function to create a Chart.js instance
+        function createChart(chartId, label, color) {
+            var ctx = document.getElementById(chartId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        borderColor: color,
+                        borderWidth: 1,
+                        data: [],
+                    }],
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                },
+            });
+        }
+
+        // Function to update real-time data
+        function updateRealtimeData(data) {
+            document.getElementById('timestamp').textContent = data.Timestamp;
+            document.getElementById('current').textContent = data.Current + ' mA';
+            document.getElementById('voltage').textContent = data.Voltage + ' V';
+            document.getElementById('power').textContent = data.Power + ' W';
+            document.getElementById('kwh_per_minute').textContent = data['kWh per Minute'];
+            document.getElementById('cost_per_minute').textContent = data['Cost per Minute'];
+
+            // Update chart data
+            updateChartData(currentChart, data.Timestamp, data.Current);
+            updateChartData(voltageChart, data.Timestamp, data.Voltage);
+            updateChartData(powerChart, data.Timestamp, data.Power);
+            updateChartData(kwhChart, data.Timestamp, data['kWh per Minute']);
+            updateChartData(costChart, data.Timestamp, data['Cost per Minute']);
+        }
+
+        // Function to update chart data
+        function updateChartData(chart, label, value) {
+            chart.data.labels.push(label);
+            chart.data.datasets[0].data.push(value);
+
+            // Limit the number of data points displayed (e.g., last 50 data points)
+            const maxDataPoints = 50;
+            if (chart.data.labels.length > maxDataPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+
+            chart.update();
+        }
+
+        // Initialize charts when the page loads
+        window.addEventListener('load', initializeCharts);
+
+        // Set up an interval to periodically update the charts with new data
+        setInterval(function () {
+            fetch('/update_realtime_data')
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    updateRealtimeData(data);
+                })
+                .catch(function (error) {
+                    console.error('Error fetching data:', error);
+                });
+        }, 5000); // Update every 60 seconds
+    </script>
+</body>
+</html>
+
